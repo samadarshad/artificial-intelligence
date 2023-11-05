@@ -5,11 +5,10 @@ from utils import *
 row_units = [cross(r, cols) for r in rows]
 column_units = [cross(rows, c) for c in cols]
 square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','456','789')]
-diagonal_units = ["".join(d) for d in zip(rows, cols)] + ["".join(d) for d in zip(rows, cols[::-1])]
+diagonal_units = [["".join(d) for d in zip(rows, cols)], ["".join(d) for d in zip(rows, cols[::-1])]]
 unitlist = row_units + column_units + square_units
 
-# TODO: Update the unit list to add the new diagonal units
-unitlist = unitlist
+unitlist = unitlist + diagonal_units
 
 
 # Must be called after all units (including diagonals) are added to the unitlist
@@ -17,7 +16,7 @@ units = extract_units(unitlist, boxes)
 peers = extract_peers(units, boxes)
 
 
-def naked_twins(values):
+def naked_twins(values: dict) -> dict:
     """Eliminate values using the naked twins strategy.
 
     The naked twins strategy says that if you have two or more unallocated boxes
@@ -54,8 +53,17 @@ def naked_twins(values):
     Pseudocode for this algorithm on github:
     https://github.com/udacity/artificial-intelligence/blob/master/Projects/1_Sudoku/pseudocode.md
     """
-    # TODO: Implement this function!
-    raise NotImplementedError
+    out = values.copy()
+    two_digit_boxes = {box: value for box, value in values.items() if len(value) == 2}
+    for boxA, valueA in two_digit_boxes.items():
+        two_digit_boxes_in_peers = {box: value for box, value in two_digit_boxes.items() if box in peers[boxA]}
+        for boxB, valueB in two_digit_boxes_in_peers.items():
+            if valueA == valueB:
+                intersection = [peer for peer in peers[boxA] if peer in peers[boxB]]
+                for peer in intersection:
+                    for digit in valueA:
+                        out[peer] = out[peer].replace(digit, "")
+    return out
 
 
 def eliminate(values):
@@ -74,10 +82,21 @@ def eliminate(values):
     dict
         The values dictionary with the assigned values eliminated from peers
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    single_values = [(key, value) for (key, value) in values.items() if len(value) == 1]
+    for key, value in single_values:
+        box = value[0]
+        for peer in peers[key]:
+            values[peer] = values[peer].replace(box, "")
+
+    return values
 
 
+def count(item, list):
+    c = 0
+    for l in list:
+        if item in l:
+            c += 1
+    return c
 def only_choice(values):
     """Apply the only choice strategy to a Sudoku puzzle
 
@@ -98,8 +117,15 @@ def only_choice(values):
     -----
     You should be able to complete this function by copying your code from the classroom
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    for box, value in values.items():
+        if len(value) == 1:
+            continue
+        for unit in units[box]:
+            values_in_boxs_units = [values[_box] for _box in unit if _box != box]
+            for possibility in value:
+                if count(possibility, values_in_boxs_units) == 0:
+                    values[box] = possibility
+    return values
 
 
 def reduce_puzzle(values):
@@ -116,9 +142,23 @@ def reduce_puzzle(values):
         The values dictionary after continued application of the constraint strategies
         no longer produces any changes, or False if the puzzle is unsolvable 
     """
-    # TODO: Copy your code from the classroom and modify it to complete this function
-    raise NotImplementedError
+    stalled = False
+    while not stalled:
+        # Check how many boxes have a determined value
+        solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
 
+        # Your code here: Use the Eliminate Strategy
+        values = eliminate(values)
+        # Your code here: Use the Only Choice Strategy
+        values = only_choice(values)
+        # Check how many boxes have a determined value, to compare
+        solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
+        # If no new values were added, stop the loop.
+        stalled = solved_values_before == solved_values_after
+        # Sanity check, return False if there is a box with zero available values:
+        if len([box for box in values.keys() if len(values[box]) == 0]):
+            return False
+    return values
 
 def search(values):
     """Apply depth first search to solve Sudoku puzzles in order to solve puzzles
@@ -139,8 +179,25 @@ def search(values):
     You should be able to complete this function by copying your code from the classroom
     and extending it to call the naked twins strategy.
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    values = reduce_puzzle(values)
+    values = naked_twins(values)
+    if not values:
+        return False
+    # Choose one of the unfilled squares with the fewest possibilities
+    unsolved = {key: value for key, value in values.items() if len(value) > 1}
+    if not unsolved:
+        # Found a solution
+        return values
+    fewest_possibility_box = min(unsolved.items(), key = lambda x: len(x[1]))
+    box = fewest_possibility_box[0]
+    box_values = fewest_possibility_box[1]
+    # Now use recursion to solve each one of the resulting sudokus, and if one returns a value (not False), return that answer!
+    for box_value in box_values:
+        new_values = values.copy()
+        new_values[box] = box_value
+        result = search(new_values)
+        if result:
+            return result
 
 
 def solve(grid):
