@@ -151,6 +151,7 @@ def reduce_puzzle(values):
         values = eliminate(values)
         # Your code here: Use the Only Choice Strategy
         values = only_choice(values)
+        values = naked_twins(values)
         # Check how many boxes have a determined value, to compare
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
         # If no new values were added, stop the loop.
@@ -180,7 +181,6 @@ def search(values):
     and extending it to call the naked twins strategy.
     """
     values = reduce_puzzle(values)
-    values = naked_twins(values)
     if not values:
         return False
     # Choose one of the unfilled squares with the fewest possibilities
