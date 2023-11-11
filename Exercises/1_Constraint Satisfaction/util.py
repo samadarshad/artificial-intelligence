@@ -58,7 +58,7 @@ def displayBoard(locations, shape):
     """
     r = c = shape
     cmap = mpl.colors.ListedColormap(['#f5ecce', '#614532'])
-    img = mpl.image.imread('queen.png').astype(np.float)
+    img = mpl.image.imread('queen.png').astype(np.single)
     boxprops = {"facecolor": "none", "edgecolor": "none"}
 
     x, y = np.meshgrid(range(c), range(r))
